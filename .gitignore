@@ -22,7 +22,7 @@
 /app/config/public/parameters_custom.yml
 
 # Custom directory
-/src/Myddleware/RegleBundle/Custom/*
+#/src/Myddleware/RegleBundle/Custom/*
 
 # Managed by Composer
 /app/bootstrap.php.cache
