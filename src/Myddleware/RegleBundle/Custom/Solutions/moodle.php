@@ -7,6 +7,118 @@ namespace Myddleware\RegleBundle\Solutions;
 use Symfony\Bridge\Monolog\Logger;
 
 class moodle extends moodlecore {
+		// Permet de créer des données
+		public function create($param) {
+			// Transformation du tableau d'entrée pour être compatible webservice Sugar
+			foreach($param['data'] as $idDoc => $data) {
+				try {
+					// Check control before create
+					$data = $this->checkDataBeforeCreate($param, $data);
+					$dataSugar = array();
+					$obj = new \stdClass();
+					foreach ($data as $key => $value) {
+						// We don't send Myddleware_element_id field to Moodle
+						if ($key == 'Myddleware_element_id') {
+							continue;
+						}
+						if (!empty($value)) {
+							$obj->$key = $value;
+						}
+					}
+					switch ($param['module']) {
+						case 'users':
+							$users = array($obj);
+							$params = array('users' => $users);
+							$functionname = 'core_user_create_users';
+							break;
+						case 'courses':
+							$courses = array($obj);
+							$params = array('courses' => $courses);
+							$functionname = 'core_course_create_courses';
+							break;
+						case 'groups':
+							$groups = array($obj);
+							$params = array('groups' => $groups);
+							$functionname = 'core_group_create_groups';
+							break;
+						case 'group_members':
+							$members = array($obj);
+							$params = array('members' => $members);
+							$functionname = 'core_group_add_group_members';
+							break;
+						case 'manual_enrol_users':
+							$enrolments = array($obj);
+							$params = array('enrolments' => $enrolments);
+							$functionname = 'enrol_manual_enrol_users';
+							break;
+						case 'manual_unenrol_users':
+							break;
+						case 'notes':
+							$notes = array($obj);
+							$params = array('notes' => $notes);
+							$functionname = 'core_notes_create_notes';
+							break;
+						default:
+							throw new \Exception("Module unknown. ");
+							break;
+					}
+
+					$serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'. '?wstoken=' .$this->paramConnexion['token']. '&wsfunction='.$functionname;
+					$response = $this->moodleClient->post($serverurl, $params);
+					$xml = simplexml_load_string($response);
+
+					// Réponse standard pour les modules avec retours
+					if (
+							!empty($xml->MULTIPLE->SINGLE->KEY->VALUE)
+						&& !in_array($param['module'],array('manual_enrol_users','group_members'))
+					) {
+						$result[$idDoc] = array(
+								'id' => $xml->MULTIPLE->SINGLE->KEY->VALUE,
+								'error' => false
+						);
+					}
+					elseif (
+							!empty($xml->MULTIPLE->SINGLE->KEY[1]->VALUE)
+						&& in_array($param['module'],array('notes'))
+					) {
+						$result[$idDoc] = array(
+								'id' => $xml->MULTIPLE->SINGLE->KEY[1]->VALUE,
+								'error' => false
+						);
+					}
+					elseif (!empty($xml->ERRORCODE)) {
+						throw new \Exception($xml->ERRORCODE.' : '.$xml->MESSAGE);
+					}
+					// Si pas d'erreur et module sans retour alors on génère l'id
+					elseif(in_array($param['module'],array('manual_enrol_users'))) {
+						$result[$idDoc] = array(
+								'id' => $obj->courseid.'_'.$obj->userid.'_'.$obj->roleid,
+								'error' => false
+						);
+					}
+					elseif(in_array($param['module'],array('group_members'))) {
+						$result[$idDoc] = array(
+								'id' => $obj->groupid.'_'.$obj->userid,
+								'error' => false
+						);
+					}
+					else {
+						throw new \Exception('Error unknown. ');
+					}
+				}
+				catch (\Exception $e) {
+					$error = $e->getMessage();
+					$result[$idDoc] = array(
+							'id' => '-1',
+							'error' => $error
+					);
+				}
+				// Modification du statut du flux
+				$this->updateDocumentStatus($idDoc,$result[$idDoc],$param);
+			}
+			return $result;
+		}
+
   public function read($param) {
     $this->logger->error("info! we're in the start of moodle read function");
 		try {
