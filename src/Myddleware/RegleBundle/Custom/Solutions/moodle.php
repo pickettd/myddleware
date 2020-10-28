@@ -144,7 +144,7 @@ class moodle extends moodlecore {
 						continue;
 					}
 					elseif ($key == 'customfields') {
-
+						continue;
 					}
 					if (!empty($value)) {
 						$obj->$key = $value;
