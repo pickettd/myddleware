@@ -6,7 +6,7 @@
 namespace Myddleware\RegleBundle\Solutions;
 use Symfony\Bridge\Monolog\Logger;
 
-const currentLogString = " ($*^_^*$)";
+const currentLogString = " ($*^#__%*%__#^*$)";
 
 class moodle extends moodlecore {
 		// Permet de créer des données
@@ -144,12 +144,19 @@ class moodle extends moodlecore {
 						continue;
 					}
 					elseif ($key == 'customfields') {
+						$this->logger->error("found key for customfields, going to try to make an array that has a child1_email key and value of this value");
+						if (!empty($value)) {
+							$this->logger->error("found key for customfields, and value is not empty");
+							$obj->$key = array(array('type'=> 'child1_email', 'value' => $value));
+							$this->logger->error("found key for customfields, maybe inserted an assoc. array that has a child1_email key and value of this value?");
+						}
 						continue;
 					}
 					if (!empty($value)) {
 						$obj->$key = $value;
 					}
 				}
+				$this->logger->error("finished looking through all the fields to update, now myddleware will do a switch on the type of module");
 
 				// Fonctions et paramètres différents en fonction des appels webservice
 				switch ($param['module']) {
