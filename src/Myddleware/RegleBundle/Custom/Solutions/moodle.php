@@ -6,10 +6,12 @@
 namespace Myddleware\RegleBundle\Solutions;
 use Symfony\Bridge\Monolog\Logger;
 
+const currentLogString = " ($*^_^*$)";
+
 class moodle extends moodlecore {
 		// Permet de créer des données
 		public function create($param) {
-			$this->logger->error("info! we're in the start of moodle CREATE function");
+			$this->logger->error("info! we're in the start of moodle CREATE function".currentLogString);
 			// Transformation du tableau d'entrée pour être compatible webservice Sugar
 			foreach($param['data'] as $idDoc => $data) {
 				$this->logger->error("--START each idDoc goes to data--");
@@ -119,12 +121,13 @@ class moodle extends moodlecore {
 				$this->updateDocumentStatus($idDoc,$result[$idDoc],$param);
 				$this->logger->error("--END each idDoc goes to data");
 			}
+			$this->logger->error("info! we're in the end of moodle CREATE function".currentLogString);
 			return $result;
 		}
 
 		// Permet de mettre à jour un enregistrement
 	public function update($param) {
-		$this->logger->error("info! we're in the start of moodle UPDATE function (^_^)");
+		$this->logger->error("info! we're in the start of moodle UPDATE function".currentLogString);
 		// Transformation du tableau d'entrée pour être compatible webservice Sugar
 		foreach($param['data'] as $idDoc => $data) {
 			$this->logger->error("--START each idDoc goes to data--");
@@ -139,6 +142,9 @@ class moodle extends moodlecore {
 					// We don't send Myddleware_element_id field to Moodle
 					} elseif ($key == 'Myddleware_element_id') {
 						continue;
+					}
+					elseif ($key == 'customfields') {
+
 					}
 					if (!empty($value)) {
 						$obj->$key = $value;
@@ -183,7 +189,9 @@ class moodle extends moodlecore {
 				}
 
 				$serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'. '?wstoken=' .$this->paramConnexion['token']. '&wsfunction='.$functionname;
+				$this->logger->error("info! we're in the moodle UPDATE function - about to do moodleClient post");
 				$response = $this->moodleClient->post($serverurl, $params);
+				$this->logger->error("info! we're in the moodle UPDATE function - about to parse result of moodleClient post");
 				$xml = simplexml_load_string($response);
 
 				// Réponse standard pour les modules avec retours
@@ -221,12 +229,12 @@ class moodle extends moodlecore {
 			$this->updateDocumentStatus($idDoc,$result[$idDoc],$param);
 			$this->logger->error("--END each idDoc goes to data--");
 		}
-		$this->logger->error("info! we're in the end of moodle UPDATE function (^_^)");
+		$this->logger->error("info! we're in the end of moodle UPDATE function".currentLogString);
 		return $result;
 	}
 
   public function read($param) {
-    $this->logger->error("info! we're in the start of moodle read function");
+    $this->logger->error("info! we're in the start of moodle READ function".currentLogString);
 		try {
       $result['count'] = 0;
 
@@ -254,7 +262,6 @@ class moodle extends moodlecore {
 
 			// Transform the data to Myddleware format
 			if (!empty($xml->MULTIPLE->SINGLE)) {
-				$this->logger->error("info! we're in the read function, about to break down response by fields (^___^)");
 				//$this->logger->error("this is the data that has fields inside: ".print_r($param['fields'],true));
 				foreach ($xml->MULTIPLE->SINGLE AS $data) {
 					$this->logger->error('---Start of a user---');
@@ -311,7 +318,7 @@ class moodle extends moodlecore {
 					$result['values'][$row['id']] = $row;
 					$result['count']++;
 				}
-				$this->logger->error("info! we're in the read function, FINISHED break down response by fields (^___^)");
+				$this->logger->error("info! we're in the read function, FINISHED break down response by fields".currentLogString);
 			}
 			// Put date ref in Myddleware format
 			$result['date_ref'] = $this->dateTimeToMyddleware($result['date_ref']);
