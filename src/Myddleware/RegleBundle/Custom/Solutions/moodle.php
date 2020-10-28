@@ -9,8 +9,10 @@ use Symfony\Bridge\Monolog\Logger;
 class moodle extends moodlecore {
 		// Permet de créer des données
 		public function create($param) {
+			$this->logger->error("info! we're in the start of moodle create function");
 			// Transformation du tableau d'entrée pour être compatible webservice Sugar
 			foreach($param['data'] as $idDoc => $data) {
+				$this->logger->error("--START each idDoc goes to data");
 				try {
 					// Check control before create
 					$data = $this->checkDataBeforeCreate($param, $data);
@@ -115,6 +117,7 @@ class moodle extends moodlecore {
 				}
 				// Modification du statut du flux
 				$this->updateDocumentStatus($idDoc,$result[$idDoc],$param);
+				$this->logger->error("--END each idDoc goes to data");
 			}
 			return $result;
 		}
