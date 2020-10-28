@@ -122,6 +122,105 @@ class moodle extends moodlecore {
 			return $result;
 		}
 
+		// Permet de mettre à jour un enregistrement
+	public function update($param) {
+		// Transformation du tableau d'entrée pour être compatible webservice Sugar
+		foreach($param['data'] as $idDoc => $data) {
+			try {
+				// Check control before update
+				$data = $this->checkDataBeforeUpdate($param, $data);
+				$dataSugar = array();
+				$obj = new \stdClass();
+				foreach ($data as $key => $value) {
+					if ($key == 'target_id') {
+						continue;
+					// We don't send Myddleware_element_id field to Moodle
+					} elseif ($key == 'Myddleware_element_id') {
+						continue;
+					}
+					if (!empty($value)) {
+						$obj->$key = $value;
+					}
+				}
+
+				// Fonctions et paramètres différents en fonction des appels webservice
+				switch ($param['module']) {
+					case 'users':
+						$obj->id = $data['target_id'];
+						$users = array($obj);
+						$params = array('users' => $users);
+						$functionname = 'core_user_update_users';
+						break;
+					case 'courses':
+						$obj->id = $data['target_id'];
+						$courses = array($obj);
+						$params = array('courses' => $courses);
+						$functionname = 'core_course_update_courses';
+						break;
+					case 'manual_enrol_users':
+						$enrolments = array($obj);
+						$params = array('enrolments' => $enrolments);
+						$functionname = 'enrol_manual_enrol_users';
+						break;
+					case 'notes':
+						$obj->id = $data['target_id'];
+						unset($obj->userid);
+						unset($obj->courseid);
+						$notes = array($obj);
+						$params = array('notes' => $notes);
+						$functionname = 'core_notes_update_notes';
+						break;
+					case 'group_members':
+						$members = array($obj);
+						$params = array('members' => $members);
+						$functionname = 'core_group_add_group_members';
+						break;
+					default:
+						throw new \Exception("Module unknown. ");
+						break;
+				}
+
+				$serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'. '?wstoken=' .$this->paramConnexion['token']. '&wsfunction='.$functionname;
+				$response = $this->moodleClient->post($serverurl, $params);
+				$xml = simplexml_load_string($response);
+
+				// Réponse standard pour les modules avec retours
+				if (!empty($xml->ERRORCODE)) {
+					throw new \Exception($xml->ERRORCODE.' : '.$xml->MESSAGE.(!empty($xml->DEBUGINFO) ? ' Debug : '.$xml->DEBUGINFO : ''));
+				}
+				// Si pas d'erreur et module sans retour alors on génère l'id
+				elseif(in_array($param['module'],array('manual_enrol_users'))) {
+					$result[$idDoc] = array(
+							'id' => $obj->courseid.'_'.$obj->userid.'_'.$obj->roleid,
+							'error' => false
+					);
+				}
+				elseif(in_array($param['module'],array('group_members'))) {
+					$result[$idDoc] = array(
+							'id' => $obj->groupid.'_'.$obj->userid,
+							'error' => false
+					);
+				}
+				else {
+					$result[$idDoc] = array(
+							'id' => $obj->id,
+							'error' => false
+					);
+				}
+			}
+			catch (\Exception $e) {
+				$error = $e->getMessage();
+				$result[$idDoc] = array(
+						'id' => '-1',
+						'error' => $error
+				);
+			}
+			// Modification du statut du flux
+			$this->updateDocumentStatus($idDoc,$result[$idDoc],$param);
+		}
+		return $result;
+	}
+
   public function read($param) {
     $this->logger->error("info! we're in the start of moodle read function");
 		try {
