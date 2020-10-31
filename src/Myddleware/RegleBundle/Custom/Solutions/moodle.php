@@ -6,7 +6,7 @@
 namespace Myddleware\RegleBundle\Solutions;
 use Symfony\Bridge\Monolog\Logger;
 
-const currentLogString = " ($*^#__%*%__#^*$)";
+const currentLogString = "^^(::^^::)^^";
 
 class moodle extends moodlecore {
 		// Permet de créer des données
@@ -269,6 +269,13 @@ class moodle extends moodlecore {
 
 			// Transform the data to Myddleware format
 			if (!empty($xml->MULTIPLE->SINGLE)) {
+				// When we get a response from Moodle, we will have to parse the custom profile fields, make sure there is at least an empty string for requested properties
+				$supportedMoodleProfileFields = array('customfields', 'child1_email', 'child2_email');
+				foreach ($supportedMoodleProfileFields AS $supportedCustomField) {
+					if (array_search($supportedCustomField, $param['fields']) !== false) {
+						$row[$supportedCustomField] = "";
+					}
+				}
 				//$this->logger->error("this is the data that has fields inside: ".print_r($param['fields'],true));
 				foreach ($xml->MULTIPLE->SINGLE AS $data) {
 					$this->logger->error('---Start of a user---');
@@ -293,32 +300,39 @@ class moodle extends moodlecore {
 						) {
 							$row['date_modified'] = $this->dateTimeToMyddleware($field->VALUE->__toString());
 						}
+
 						// Get all the requested fields
 						if (array_search($field->attributes()->__toString(), $param['fields']) !== false) {
-							// This records all attributes that match our fields list
-							//$this->logger->error('ATTRIB: '.print_r($field->attributes()->__toString(),true));
 							if ($field->attributes()->__toString() == "customfields") {
+								$row['customfields'] = "This user has custom Moodle profile fields";
 								//$this->logger->error('WHOLE VALUE: '.print_r($field,true));
 									if (!empty($field->MULTIPLE->SINGLE)) {
 										$this->logger->error('This is customfield and the field->multiple is not empty');
 										foreach($field->MULTIPLE->SINGLE as $customfield) {
+											// This logic searches the customfield for the shortName and value (and uses it if we're looking for it)
+											$shortName = "";
+											$customValue = "";
 											foreach($customfield->KEY as $property) {
 												if ($property->attributes()->__toString() == 'shortname') {
-													$this->logger->error('SHORTNAME: '.print_r($property->VALUE->__toString(), true));
+													$shortName = $property->VALUE->__toString();
 												}
-												if ($property->attributes()->__toString() == 'value') {
-													$this->logger->error('VALUE: '.print_r($property->VALUE->__toString(), true));
+												else if ($property->attributes()->__toString() == 'value') {
+													$customValue = $property->VALUE->__toString();
 												}
+											}
+											if (array_search($shortName, $param['fields']) !== false) {
+												$this->logger->error('found the custom field shortName in the properties that we want');
+												$this->logger->error('SHORTNAME: '.print_r($shortName, true));
+												$this->logger->error('VALUE: '.print_r($customValue, true));
+												$row[$shortName] = $customValue;
 											}
 										}
 									}
 								}
-							/*else {
-								// This records the value of all non-customfields in our field list
-								$this->logger->error('VALUE: '.print_r($field->VALUE->__toString(),true));
-							}*/
-							//$this->logger->error('---End of this field---');
-							$row[$field->attributes()->__toString()] = $field->VALUE->__toString();
+							else {
+								// This is the default logic for non-custom-profile fields
+								$row[$field->attributes()->__toString()] = $field->VALUE->__toString();
+							}
 						}
 					}
 					$this->logger->error('---End of a user---');
