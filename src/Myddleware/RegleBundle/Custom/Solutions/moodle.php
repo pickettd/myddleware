@@ -11,10 +11,12 @@ const currentLogString = " ^-----^";
 class moodle extends moodlecore {
 		// Permet de créer des données
 		public function create($param) {
-			$this->logger->error("info! we're in the start of moodle CREATE function".currentLogString);
+			// Note that $this->logger->error will show up in the server log (either dev.log or prod.log)
+			// The logger statements in this file that are commented out are for testing/debugging this custom code
+			//$this->logger->error("info! we're in the start of moodle CREATE function".currentLogString);
 			// Transformation du tableau d'entrée pour être compatible webservice Sugar
 			foreach($param['data'] as $idDoc => $data) {
-				$this->logger->error("--START each idDoc goes to data--");
+				//$this->logger->error("--START each idDoc goes to data--");
 				try {
 					// Check control before create
 					$data = $this->checkDataBeforeCreate($param, $data);
@@ -152,18 +154,20 @@ class moodle extends moodlecore {
 				}
 				// Modification du statut du flux
 				$this->updateDocumentStatus($idDoc,$result[$idDoc],$param);
-				$this->logger->error("--END each idDoc goes to data");
+				//$this->logger->error("--END each idDoc goes to data");
 			}
-			$this->logger->error("info! we're in the end of moodle CREATE function".currentLogString);
+			//$this->logger->error("info! we're in the end of moodle CREATE function".currentLogString);
 			return $result;
 		}
 
 		// Permet de mettre à jour un enregistrement
 	public function update($param) {
-		$this->logger->error("info! we're in the start of moodle UPDATE function".currentLogString);
+		// Note that $this->logger->error will show up in the server log (either dev.log or prod.log)
+		// The logger statements in this file that are commented out are for testing/debugging this custom code
+		//$this->logger->error("info! we're in the start of moodle UPDATE function".currentLogString);
 		// Transformation du tableau d'entrée pour être compatible webservice Sugar
 		foreach($param['data'] as $idDoc => $data) {
-			$this->logger->error("--START each idDoc goes to data--");
+			//$this->logger->error("--START each idDoc goes to data--");
 			try {
 				// Check control before update
 				$data = $this->checkDataBeforeUpdate($param, $data);
@@ -213,7 +217,7 @@ class moodle extends moodlecore {
 						$obj->$key = $value;
 					}
 				}
-				$this->logger->error("finished looking through all the fields to update, now myddleware will do a switch on the type of module");
+				//$this->logger->error("finished looking through all the fields to update, now myddleware will do a switch on the type of module");
 
 				// Fonctions et paramètres différents en fonction des appels webservice
 				switch ($param['module']) {
@@ -253,9 +257,9 @@ class moodle extends moodlecore {
 				}
 
 				$serverurl = $this->paramConnexion['url'].'/webservice/rest/server.php'. '?wstoken=' .$this->paramConnexion['token']. '&wsfunction='.$functionname;
-				$this->logger->error("info! we're in the moodle UPDATE function - about to do moodleClient post");
+				//$this->logger->error("info! we're in the moodle UPDATE function - about to do moodleClient post");
 				$response = $this->moodleClient->post($serverurl, $params);
-				$this->logger->error("info! we're in the moodle UPDATE function - about to parse result of moodleClient post");
+				//$this->logger->error("info! we're in the moodle UPDATE function - about to parse result of moodleClient post");
 				$xml = simplexml_load_string($response);
 
 				// Réponse standard pour les modules avec retours
@@ -291,14 +295,16 @@ class moodle extends moodlecore {
 			}
 			// Modification du statut du flux
 			$this->updateDocumentStatus($idDoc,$result[$idDoc],$param);
-			$this->logger->error("--END each idDoc goes to data--");
+			//$this->logger->error("--END each idDoc goes to data--");
 		}
-		$this->logger->error("info! we're in the end of moodle UPDATE function".currentLogString);
+		//$this->logger->error("info! we're in the end of moodle UPDATE function".currentLogString);
 		return $result;
 	}
 
   public function read($param) {
-    $this->logger->error("info! we're in the start of moodle READ function".currentLogString);
+	// Note that $this->logger->error will show up in the server log (either dev.log or prod.log)
+	// The logger statements in this file that are commented out are for testing/debugging this custom code
+    //$this->logger->error("info! we're in the start of moodle READ function".currentLogString);
 		try {
       $result['count'] = 0;
 
@@ -335,7 +341,7 @@ class moodle extends moodlecore {
 				}
 				//$this->logger->error("this is the data that has fields inside: ".print_r($param['fields'],true));
 				foreach ($xml->MULTIPLE->SINGLE AS $data) {
-					$this->logger->error('---Start of a user---');
+					//$this->logger->error('---Start of a user---');
 					foreach ($data AS $field) {
 
 						// Save the new date ref
@@ -364,7 +370,7 @@ class moodle extends moodlecore {
 								$row['customfields'] = "This user has custom Moodle profile fields";
 								//$this->logger->error('WHOLE VALUE: '.print_r($field,true));
 									if (!empty($field->MULTIPLE->SINGLE)) {
-										$this->logger->error('This is customfield and the field->multiple is not empty');
+										//$this->logger->error('This is customfield and the field->multiple is not empty');
 										foreach($field->MULTIPLE->SINGLE as $customfield) {
 											// This logic searches the customfield for the shortName and value (and uses it if we're looking for it)
 											$shortName = "";
@@ -378,9 +384,9 @@ class moodle extends moodlecore {
 												}
 											}
 											if (array_search($shortName, $param['fields']) !== false) {
-												$this->logger->error('found the custom field shortName in the properties that we want');
-												$this->logger->error('SHORTNAME: '.print_r($shortName, true));
-												$this->logger->error('VALUE: '.print_r($customValue, true));
+												//$this->logger->error('found the custom field shortName in the properties that we want');
+												//$this->logger->error('SHORTNAME: '.print_r($shortName, true));
+												//$this->logger->error('VALUE: '.print_r($customValue, true));
 												$row[$shortName] = $customValue;
 											}
 										}
@@ -392,11 +398,11 @@ class moodle extends moodlecore {
 							}
 						}
 					}
-					$this->logger->error('---End of a user---');
+					//$this->logger->error('---End of a user---');
 					$result['values'][$row['id']] = $row;
 					$result['count']++;
 				}
-				$this->logger->error("info! we're in the read function, FINISHED break down response by fields".currentLogString);
+				//$this->logger->error("info! we're in the read function, FINISHED break down response by fields".currentLogString);
 			}
 			// Put date ref in Myddleware format
 			$result['date_ref'] = $this->dateTimeToMyddleware($result['date_ref']);
