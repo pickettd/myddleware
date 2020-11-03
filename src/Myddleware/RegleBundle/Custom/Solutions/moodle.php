@@ -6,7 +6,7 @@
 namespace Myddleware\RegleBundle\Solutions;
 use Symfony\Bridge\Monolog\Logger;
 
-const currentLogString = " ----%%%&@----@&%%%%----";
+const currentLogString = " ^-----^";
 
 class moodle extends moodlecore {
 		// Permet de créer des données
@@ -23,6 +23,39 @@ class moodle extends moodlecore {
 					foreach ($data as $key => $value) {
 						// We don't send Myddleware_element_id field to Moodle
 						if ($key == 'Myddleware_element_id') {
+							continue;
+						}
+						elseif ($key == 'customfields') {
+							// I think we will try to not write anything specifically to the customfield itself?
+							// the code below did work for writing in what we wanted from Salesforce into the customfield part
+							/*$this->logger->error("found key for customfields, going to try to make an array that has a child1_email key and value of this value");
+							if (!empty($value)) {
+								$this->logger->error("found key for customfields, and value is not empty");
+								$obj->$key = array(array('type'=> 'child1_email', 'value' => $value));
+								$this->logger->error("found key for customfields, maybe inserted an assoc. array that has a child1_email key and value of this value?");
+							}*/
+							continue;
+						}
+						elseif ($key == 'child1_email') {
+							if (!empty($value)) {
+								if (!empty($obj->customfields) ) {
+									$obj->customfields[] = array('type'=> 'child1_email', 'value' => $value);
+								}
+								else {
+									$obj->customfields = array(array('type'=> 'child1_email', 'value' => $value));
+								}
+							}
+							continue;
+						}
+						elseif ($key == 'child2_email') {
+							if (!empty($value)) {
+								if (!empty($obj->customfields) ) {
+									$obj->customfields[] = array('type'=> 'child2_email', 'value' => $value);
+								}
+								else {
+									$obj->customfields = array(array('type'=> 'child2_email', 'value' => $value));
+								}
+							}
 							continue;
 						}
 						if (!empty($value)) {
