@@ -6,7 +6,8 @@
 namespace Myddleware\RegleBundle\Solutions;
 use Symfony\Bridge\Monolog\Logger;
 
-const currentLogString = " ^-----^";
+// Note that currentLogString is used by the debugging log output lines to more easily tell from the log which version of the code was run
+//const currentLogString = " ^-----^";
 
 class moodle extends moodlecore {
 		// Permet de créer des données
