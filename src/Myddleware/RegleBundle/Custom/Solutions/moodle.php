@@ -61,6 +61,28 @@ class moodle extends moodlecore {
 							}
 							continue;
 						}
+						elseif ($key == 'parent1_email') {
+							if (!empty($value)) {
+								if (!empty($obj->customfields) ) {
+									$obj->customfields[] = array('type'=> 'parent1_email', 'value' => $value);
+								}
+								else {
+									$obj->customfields = array(array('type'=> 'parent1_email', 'value' => $value));
+								}
+							}
+							continue;
+						}
+						elseif ($key == 'parent2_email') {
+							if (!empty($value)) {
+								if (!empty($obj->customfields) ) {
+									$obj->customfields[] = array('type'=> 'parent2_email', 'value' => $value);
+								}
+								else {
+									$obj->customfields = array(array('type'=> 'parent2_email', 'value' => $value));
+								}
+							}
+							continue;
+						}
 						if (!empty($value)) {
 							$obj->$key = $value;
 						}
@@ -214,6 +236,28 @@ class moodle extends moodlecore {
 						}
 						continue;
 					}
+					elseif ($key == 'parent1_email') {
+						if (!empty($value)) {
+							if (!empty($obj->customfields) ) {
+								$obj->customfields[] = array('type'=> 'parent1_email', 'value' => $value);
+							}
+							else {
+								$obj->customfields = array(array('type'=> 'parent1_email', 'value' => $value));
+							}
+						}
+						continue;
+					}
+					elseif ($key == 'parent2_email') {
+						if (!empty($value)) {
+							if (!empty($obj->customfields) ) {
+								$obj->customfields[] = array('type'=> 'parent2_email', 'value' => $value);
+							}
+							else {
+								$obj->customfields = array(array('type'=> 'parent2_email', 'value' => $value));
+							}
+						}
+						continue;
+					}
 					if (!empty($value)) {
 						$obj->$key = $value;
 					}
@@ -334,7 +378,7 @@ class moodle extends moodlecore {
 			// Transform the data to Myddleware format
 			if (!empty($xml->MULTIPLE->SINGLE)) {
 				// When we get a response from Moodle, we will have to parse the custom profile fields, make sure there is at least an empty string for requested properties
-				$supportedMoodleProfileFields = array('customfields', 'child1_email', 'child2_email');
+				$supportedMoodleProfileFields = array('customfields', 'child1_email', 'child2_email', 'parent1_email', 'parent2_email');
 				foreach ($supportedMoodleProfileFields AS $supportedCustomField) {
 					if (array_search($supportedCustomField, $param['fields']) !== false) {
 						$row[$supportedCustomField] = "";
