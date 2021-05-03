@@ -25,12 +25,13 @@
 
 namespace Myddleware\RegleBundle\Classes;
 
-use Symfony\Bridge\Monolog\Logger; // Gestion des logs
-use Symfony\Component\DependencyInjection\ContainerInterface as Container; // Accède aux services
+use Exception;
 use Doctrine\DBAL\Connection; // Connexion BDD
-use Myddleware\RegleBundle\Classes\tools as MyddlewareTools; // SugarCRM Myddleware
+use Symfony\Bridge\Monolog\Logger; // Gestion des logs
 use Myddleware\RegleBundle\Entity\DocumentData as DocumentDataEntity;
 use Myddleware\RegleBundle\Entity\DocumentRelationship as DocumentRelationship;
+use Myddleware\RegleBundle\Classes\tools as MyddlewareTools; // SugarCRM Myddleware
+use Symfony\Component\DependencyInjection\ContainerInterface as Container; // Accède aux services
 
 class documentcore { 
 	
@@ -272,13 +273,13 @@ class documentcore {
 			if (!$this->jobActive) {
 				$this->message .= 'Job is not active. ';
 				return false;
-			}		
+			}			
 			// Création du header de la requête 
 			$query_header = "INSERT INTO Document (id, rule_id, date_created, date_modified, created_by, modified_by, source_id, source_date_modified, mode, type, parent_id) VALUES";		
 			// Création de la requête d'entête
 			$date_modified = $this->data['date_modified'];
 			// Source_id could contain accent
-			$query_header .= "('$this->id','$this->ruleId','$this->dateCreated','$this->dateCreated','$this->userId','$this->userId','".utf8_encode($this->sourceId)."','$date_modified','$this->ruleMode','$this->documentType','$this->parentId')";
+			$query_header .= "('$this->id','$this->ruleId','$this->dateCreated','$this->dateCreated','$this->userId','$this->userId','".utf8_encode(addcslashes($this->sourceId,'\\'))."','$date_modified','$this->ruleMode','$this->documentType','$this->parentId')";
 			$stmt = $this->connection->prepare($query_header); 
 			$stmt->execute();
 			$this->updateStatus('New');
@@ -747,6 +748,22 @@ class documentcore {
 			// Transformation des données et insertion dans la table target
 			$transformed = $this->updateTargetTable();
 			if ($transformed) {
+				// If the type of this document is Create and if the field Myddleware_element_id isn't empty, 
+				// it means that the target ID is mapped in the rule field
+				// In this case, we force the document's type to Update because Myddleware will update the record into the target application
+				// using Myddleware_element_id as the target ID
+				if ($this->documentType == 'C') {
+					$target = $this->getDocumentData('T');	
+					if (!empty($target['Myddleware_element_id'])) {
+						$this->targetId = $target['Myddleware_element_id'];
+						if($this->updateTargetId($this->targetId)) {
+							$this->updateType('U');
+						} else {
+							throw new \Exception( 'The type of this document is Update. Failed to update the target id '.$this->targetId.' on this document. This document is queued. ' );
+						}
+					}
+				}
+			
 				// If the type of this document is Update and the id of the target is missing, we try to get this ID
 				// Except if the rule is a child (no target id is required, it will be send with the parent rule)
 				if (
@@ -1295,7 +1312,7 @@ class documentcore {
 				}
 			}
 			// Si le champ est envoyé sans transformation
-			elseif (isset($source[$ruleField['source_field_name']])) {			
+			elseif (isset($source[$ruleField['source_field_name']])) {		
 				return $this->checkField($source[$ruleField['source_field_name']]);
 			}
 			// If Myddleware_element_id is requested, we return the id 
@@ -1305,12 +1322,12 @@ class documentcore {
 			) {			
 				return $this->checkField($source['id']);
 			}
-			elseif (is_null($source[$ruleField['source_field_name']])) {			
+			elseif (is_null($source[$ruleField['source_field_name']])) {	
 				return null;
 			}
 			else {
 				throw new \Exception( 'Field '.$ruleField['source_field_name'].' not found in source data.------'.print_r($ruleField,true) );
-			}
+			}			
 		}
 		catch(\Exception $e) {		
 			$this->typeError = 'E';

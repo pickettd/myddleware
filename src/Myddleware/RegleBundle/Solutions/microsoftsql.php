@@ -56,7 +56,7 @@ class microsoftsqlcore extends database {
 	
 	// Query to get all the tables of the database
 	protected function get_query_show_tables() {
-		return 'SELECT table_name FROM information_schema.tables WHERE table_catalog = \''.$this->paramConnexion['database_name'].'\'';
+		return 'SELECT table_name FROM information_schema.columns WHERE table_catalog = \''.$this->paramConnexion['database_name'].'\'';
 	}
 	
 	// Query to get all the flieds of the table
@@ -76,11 +76,7 @@ class microsoftsqlcore extends database {
 		return " OFFSET ".$param['offset']." ROWS FETCH NEXT ".$param['limit']." ROWS ONLY";
 	}
 	
-	// Function to escape characters 
-	protected function escape($value) {
-		return str_replace("'", "''", $value);
-	}
-	
+
 	protected function get_query_select_header($param, $method) {
 		// The limit is managed with TOP if we don't have the offset parameter
 		if ($method == 'read_last') {

@@ -31,6 +31,9 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 
 class vtigercrmcore extends solution
 {
+	// Enable to delete data 
+	protected $sendDeletion = true;	
+	
     protected $limitPerCall = 100;
 
     protected $required_fields = [
@@ -45,6 +48,7 @@ class vtigercrmcore extends solution
 	protected $FieldsDuplicate = array(	
 										'Contacts' => array('email', 'lastname'),
 										'CompanyDetails' => array('organizationname'),
+										'Accounts' => array('accountname'),
 										'Leads' => array('email', 'lastname'),
 										'default' => array('')
 									  );
@@ -80,8 +84,13 @@ class vtigercrmcore extends solution
                                     "PurchaseOrder",
                                     "GreenTimeControl",
                                     "DDT",
-                                ];
+								];
+								
 
+
+
+	// Module list that allows to make parent relationships
+	protected $allowParentRelationship = array('Quotes', 'SalesOrder');
 
     /** @var array $moduleList */
     protected $moduleList;
@@ -365,7 +374,16 @@ class vtigercrmcore extends solution
 				$query = ["success" => true, "result" => $entity];
 			}
 			else {
-				$query = $this->vtigerClient->query("SELECT $queryParam FROM $param[module] $where ORDER BY modifiedtime DESC LIMIT 0,1;");
+				// If we search a specific record
+				if (!empty($param['query']['id'])) {
+					$query = $this->vtigerClient->retrieve($param['query']['id']);
+					// Add a dimension to the result to have the same format than the other call below
+					if (!empty($query)) {
+						$query['result'][0] = $query['result'];
+					}
+				} else {					
+					$query = $this->vtigerClient->query("SELECT $queryParam FROM $param[module] $where ORDER BY modifiedtime DESC LIMIT 0,1;");
+				}
 			}
 
 			if (empty($query) || (!empty($query) && !$query['success'])) {
@@ -410,7 +428,7 @@ class vtigercrmcore extends solution
      * @return array
      */
     public function read($param)
-    {
+    {		
 		try {
 			if (empty($this->vtigerClient)) {
 				return [
@@ -557,8 +575,9 @@ class vtigercrmcore extends solution
      * @return array
      */
     public function create($param)
-    {
+    {		
 		try {
+			$subDocIdArray = array();
 			if (empty($this->vtigerClient)) {
 				return ['error' => 'Error: no VtigerClient setup'];
 			}
@@ -576,7 +595,23 @@ class vtigercrmcore extends solution
 
 			foreach ($param['data'] as $idDoc => $data) {
 				try {
-					unset($data['target_id']);
+					// Clean record by removing Myddleware fields (ex : target_id)
+					$data = $this->cleanRecord($param, $data);
+					
+					// In case of LineItem (sub array in the data array => an order can have seeral orderItems), 
+					// We transform the lineItem array into a LineItems array with the right format
+					if (!empty(	$data['LineItem'])) {
+						foreach($data['LineItem'] as $subIdDoc => $childRecord) {
+							// Save the subIdoc to change the sub data transfer status
+							$subDocIdArray[$subIdDoc] = array('id' => uniqid('', true));
+							// Clean subrecord by removing Myddleware fields (ex : target_id)
+							$childRecord = $this->cleanRecord($param, $childRecord);
+							$data['LineItems'][] = $childRecord;
+						}
+						// Add the product at the order level (work around because of an issue in Vtiger API)
+						$data['productid'] = $childRecord['productid'];
+						unset($data['LineItem']);
+					}	
 
 					if (!empty($lineItemFields) && in_array($param['module'], $this->inventoryModules, true)) {
 						foreach ($data as $inventorykey => $inventoryValue) {
@@ -590,6 +625,7 @@ class vtigercrmcore extends solution
 					}
 
 					$resultCreate = $this->vtigerClient->create($param['module'], $data);
+
 
 					if (!empty($resultCreate) && $resultCreate['success'] && !empty($resultCreate['result'])) {
 						if ($param['module'] == "LineItem") {
@@ -617,6 +653,15 @@ class vtigercrmcore extends solution
 						'error' => $e->getMessage()
 					);
 				}
+				// Transfert status update
+				if (
+						!empty($subDocIdArray)
+					AND empty($result[$idDoc]['error'])
+				) {				
+					foreach($subDocIdArray as $idSubDoc => $valueSubDoc) {				
+						$this->updateDocumentStatus($idSubDoc,$valueSubDoc,$param);
+					}
+				}
 				$this->updateDocumentStatus($idDoc, $result[$idDoc], $param);
 			}
 		} catch (\Exception $e) {
@@ -633,8 +678,9 @@ class vtigercrmcore extends solution
      * @return array
      */
     public function update($param)
-    {
+    {		
 		try {
+			$subDocIdArray = array();
 			if (empty($this->vtigerClient)) {
 				return ['error' => 'Error: no VtigerClient setup'];
 			}
@@ -653,7 +699,23 @@ class vtigercrmcore extends solution
 			foreach ($param['data'] as $idDoc => $data) {
 				try {
 					$data['id'] = $data['target_id'];
-					unset($data['target_id']);
+					// Clean record by removing Myddleware fields (ex : target_id)
+					$data = $this->cleanRecord($param, $data);
+					
+					// In case of LineItem (sub array in the data array => an order can have seeral orderItems), 
+					// We transform the lineItem array into a LineItems array with the right format
+					if (!empty(	$data['LineItem'])) {
+						foreach($data['LineItem'] as $subIdDoc => $childRecord) {
+							// Save the subIdoc to change the sub data transfer status
+							$subDocIdArray[$subIdDoc] = array('id' => uniqid('', true));
+							// Clean subrecord by removing Myddleware fields (ex : target_id)
+							$childRecord = $this->cleanRecord($param, $childRecord);
+							$data['LineItems'][] = $childRecord;
+						}
+						// Add the product at the order level (work around because of an issue in Vtiger API)
+						$data['productid'] = $childRecord['productid'];
+						unset($data['LineItem']);
+					}	
 
 					if (!empty($lineItemFields) && in_array($param['module'], $this->inventoryModules, true)) {
 						foreach ($data as $inventorykey => $inventoryValue) {
@@ -694,6 +756,15 @@ class vtigercrmcore extends solution
 						'error' => $e->getMessage()
 					);
 				}
+				// Transfert status update
+				if (
+						!empty($subDocIdArray)
+					AND empty($result[$idDoc]['error'])
+				) {				
+					foreach($subDocIdArray as $idSubDoc => $valueSubDoc) {				
+						$this->updateDocumentStatus($idSubDoc,$valueSubDoc,$param);
+					}
+				}
 				$this->updateDocumentStatus($idDoc, $result[$idDoc], $param);
 			}
 		} catch (\Exception $e) {
@@ -702,6 +773,60 @@ class vtigercrmcore extends solution
 		}	
 		return $result;
     }
+	
+	// Function to delete a record
+	public function delete($param) {
+		try {
+			// For every document
+			foreach($param['data'] as $idDoc => $data) {
+				try {
+					// Check control before delete
+					$data = $this->checkDataBeforeDelete($param, $data);
+					if (empty($data['target_id'])) {
+						throw new \Exception('No target id found. Failed to delete the record.');
+					}
+					// Delete the record
+					$resultDelete = $this->vtigerClient->delete($data['target_id']);
+					if (empty($resultDelete['success'])) {
+						throw new \Exception($resultDelete["error"]["message"] ?? "Error");
+					}
+					// Generate return for Myddleware
+					$result[$idDoc] = array(
+											'id' => $data['target_id'],
+											'error' => false
+										);
+				}
+				catch (\Exception $e) {
+					$error = 'Error : '.$e->getMessage();
+					$result[$idDoc] = array(
+							'id' => '-1',
+							'error' => $error
+					);
+				}
+				// Status modification for the transfer
+				$this->updateDocumentStatus($idDoc,$result[$idDoc],$param);
+			}
+		}
+		catch (\Exception $e) {
+			$error = 'Error : '.$e->getMessage().' '.$e->getFile().' Line : ( '.$e->getLine().' )';
+			$result[$idDoc] = array(
+					'id' => '-1',
+					'error' => $error
+			);
+		}
+		return $result;
+	}
+	
+	// Clean a record by removing all Myddleware fields
+	protected function cleanRecord($param, $data) {
+		$myddlewareFields = array('target_id', 'source_date_modified', 'id_doc_myddleware','Myddleware_element_id');
+		foreach ($myddlewareFields as $myddlewareField) {
+			if (array_key_exists($myddlewareField, $data)) {
+				unset($data[$myddlewareField]);
+			}
+		}
+		return $data;
+	}
 	
 	// Build the direct link to the record (used in data transfer view)
 	public function getDirectLink($rule, $document, $type){		

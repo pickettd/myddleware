@@ -141,6 +141,16 @@ services:
      myddleware_rule.iadvize:
         class: Myddleware\RegleBundle\Solutions\iadvize
         arguments: ["@logger", "@service_container", "@doctrine.dbal.default_connection"]
+     myddleware_rule.woocommerce:
+        class: Myddleware\RegleBundle\Solutions\woocommerce
+        arguments: ["@logger", "@service_container", "@doctrine.dbal.default_connection"]
+     myddleware_rule.wooeventmanager:
+        class: Myddleware\RegleBundle\Solutions\wooeventmanager
+        arguments: ["@logger", "@service_container", "@doctrine.dbal.default_connection"]
+     myddleware_rule.wordpress:
+        class: Myddleware\RegleBundle\Solutions\wordpress
+        arguments: ["@logger", "@service_container", "@doctrine.dbal.default_connection"]
+
      myddleware_rule.rule:  
          class: Myddleware\RegleBundle\Classes\rule
          arguments: ["@logger", "@service_container", "@doctrine.dbal.default_connection", 'rule']
@@ -149,4 +159,3 @@ services:
          tags:
              - { name: form.type, alias: regle_user_profile }
   
-
